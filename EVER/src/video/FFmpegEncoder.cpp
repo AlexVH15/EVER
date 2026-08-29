@@ -418,7 +418,18 @@ namespace Encoder {
             POST();
             return hr;
         }
-        
+
+        // If the sample format was not supplied via options (e.g. a sparse preset.json),
+        // fall back to the codec's first supported format so avcodec_open2 does not fail.
+        if (audioCodecContext_->sample_fmt == AV_SAMPLE_FMT_NONE) {
+            LOG(LL_WRN, "FFmpegEncoder::InitializeAudioEncoder - Sample format not set, using codec default");
+            if (codec->sample_fmts) {
+                audioCodecContext_->sample_fmt = codec->sample_fmts[0];
+                LOG(LL_NFO, "FFmpegEncoder::InitializeAudioEncoder - Set sample format to: ",
+                    av_get_sample_fmt_name(audioCodecContext_->sample_fmt));
+            }
+        }
+
         if (formatContext_->oformat->flags & AVFMT_GLOBALHEADER) {
             LOG(LL_DBG, "FFmpegEncoder::InitializeAudioEncoder - Setting global header flag");
             audioCodecContext_->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;

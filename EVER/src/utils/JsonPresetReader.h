@@ -25,42 +25,49 @@ public:
             }
             
             nlohmann::json j = nlohmann::json::parse(ifs);
-            
+
             FFmpeg::FFENCODERCONFIG config = {};
             config.version = 2;
-            
+
             if (j.contains("format")) {
                 auto& fmt = j["format"];
                 copyJsonString(fmt.value("container", "mp4"), config.format.container, sizeof(config.format.container));
                 config.format.faststart = fmt.value("faststart", false);
             }
-            
-            if (j.contains("video")) {
-                auto& vid = j["video"];
-                copyJsonString(vid.value("codec", "libx264"), config.video.encoder, sizeof(config.video.encoder));
-                
-                std::string videoOptions = buildVideoOptionsString(vid);
-                copyJsonString(videoOptions, config.video.options, sizeof(config.video.options));
-                
-                std::string videoFilters = buildVideoFiltersString(j);
-                copyJsonString(videoFilters, config.video.filters, sizeof(config.video.filters));
-                
-                copyJsonString(std::string(""), config.video.sidedata, sizeof(config.video.sidedata));
+
+            if (isFlatSchema(j)) {
+                LOG(LL_DBG, "preset.json uses the flat encoder/options schema");
+                readFlatTrack(j.value("video", nlohmann::json::object()), config.video, "libx264");
+                readFlatTrack(j.value("audio", nlohmann::json::object()), config.audio, "aac");
+            } else {
+                LOG(LL_DBG, "preset.json uses the nested codec/parameter schema");
+                if (j.contains("video")) {
+                    auto& vid = j["video"];
+                    copyJsonString(vid.value("codec", "libx264"), config.video.encoder, sizeof(config.video.encoder));
+
+                    std::string videoOptions = buildVideoOptionsString(vid);
+                    copyJsonString(videoOptions, config.video.options, sizeof(config.video.options));
+
+                    std::string videoFilters = buildVideoFiltersString(j);
+                    copyJsonString(videoFilters, config.video.filters, sizeof(config.video.filters));
+
+                    copyJsonString(std::string(""), config.video.sidedata, sizeof(config.video.sidedata));
+                }
+
+                if (j.contains("audio")) {
+                    auto& aud = j["audio"];
+                    copyJsonString(aud.value("codec", "aac"), config.audio.encoder, sizeof(config.audio.encoder));
+
+                    std::string audioOptions = buildAudioOptionsString(aud);
+                    copyJsonString(audioOptions, config.audio.options, sizeof(config.audio.options));
+
+                    std::string audioFilters = buildAudioFiltersString(j);
+                    copyJsonString(audioFilters, config.audio.filters, sizeof(config.audio.filters));
+
+                    copyJsonString(std::string(""), config.audio.sidedata, sizeof(config.audio.sidedata));
+                }
             }
-            
-            if (j.contains("audio")) {
-                auto& aud = j["audio"];
-                copyJsonString(aud.value("codec", "aac"), config.audio.encoder, sizeof(config.audio.encoder));
-                
-                std::string audioOptions = buildAudioOptionsString(aud);
-                copyJsonString(audioOptions, config.audio.options, sizeof(config.audio.options));
-                
-                std::string audioFilters = buildAudioFiltersString(j);
-                copyJsonString(audioFilters, config.audio.filters, sizeof(config.audio.filters));
-                
-                copyJsonString(std::string(""), config.audio.sidedata, sizeof(config.audio.sidedata));
-            }
-            
+
             LOG(LL_NFO, "Successfully loaded encoder configuration from: ", preset_path_);
             LOG(LL_DBG, "Video encoder: ", config.video.encoder);
             LOG(LL_DBG, "Video options: ", config.video.options);
@@ -120,6 +127,30 @@ public:
 private:
     static void copyJsonString(const std::string& str, char* dest, size_t dest_size) {
         strncpy_s(dest, dest_size, str.c_str(), _TRUNCATE);
+    }
+
+    // The flat schema (written by EncoderConfig.exe / FFENCODERCONFIG) carries a pre-built
+    // pipe-delimited "options" string per track and an "encoder" key, instead of the nested
+    // codec/crf/preset/... parameters. Detect it so both layouts load correctly.
+    static bool isFlatSchema(const nlohmann::json& root) {
+        for (const char* track : {"video", "audio"}) {
+            if (root.contains(track) && root[track].is_object()) {
+                const auto& t = root[track];
+                if (t.contains("options") || t.contains("encoder")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static void readFlatTrack(const nlohmann::json& track, FFmpeg::FFTRACKCONFIG& dest,
+                              const char* defaultEncoder) {
+        copyJsonString(track.value("encoder", track.value("codec", std::string(defaultEncoder))),
+                       dest.encoder, sizeof(dest.encoder));
+        copyJsonString(track.value("options", std::string("")), dest.options, sizeof(dest.options));
+        copyJsonString(track.value("filters", std::string("")), dest.filters, sizeof(dest.filters));
+        copyJsonString(track.value("sidedata", std::string("")), dest.sidedata, sizeof(dest.sidedata));
     }
     
     static void copyJsonString(const nlohmann::json& json_field, char* dest, size_t dest_size) {

@@ -20,7 +20,7 @@ namespace {
     };
 
     struct PresetConfig {
-        int version = 1;
+        int version = 2;
         struct {
             std::string container = "mp4";
             bool faststart = true;
@@ -68,9 +68,11 @@ namespace {
                PresetConfig c; c.format.container = "mp4"; c.format.faststart = true;
                c.video.encoder = "hevc_nvenc"; c.video.pixFmt = "p010le"; c.video.options = "preset=p5|rc=vbr|cq=22|profile=main10";
                c.audio.encoder = "aac"; c.audio.options = "_sampleFormat=fltp|b=256000"; return c; }()},
-           {"H.265 x265 (quality)", [] {
+           {"H.265 x265 (quality, 8-bit)", [] {
+               // The bundled libx265 is an 8-bit build. For 10-bit HEVC use a hardware
+               // encoder (hevc_nvenc / hevc_qsv / hevc_amf) with p010le instead.
                PresetConfig c; c.format.container = "mp4"; c.format.faststart = true;
-               c.video.encoder = "libx265"; c.video.pixFmt = "yuv420p10le"; c.video.options = "preset=slow|crf=20|profile=main10";
+               c.video.encoder = "libx265"; c.video.pixFmt = "yuv420p"; c.video.options = "preset=slow|crf=20";
                c.audio.encoder = "aac"; c.audio.options = "_sampleFormat=fltp|b=256000"; return c; }()},
            {"Copy streams", [] {
                PresetConfig c; c.format.container = "mkv"; c.format.faststart = false;

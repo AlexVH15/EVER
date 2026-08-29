@@ -1,52 +1,19 @@
 {
-  "format": {
-    "container": "mp4",
-    "clip": false,
-    "faststart": true
-  },
-  "video": {
-    "codec": "libx264",
-    "preset": "medium",
-    "pass": "1",
-    "crf": "1",
-    "bitrate": "auto",
-    "minrate": "auto",
-    "maxrate": "auto",
-    "bufsize": "auto",
-    "gopsize": 60,
-    "pixel_format": "yuv420p",
-    "frame_rate": "auto",
-    "speed": "auto",
-    "tune": "none",
-    "profile": "none",
-    "level": "none",
-    "faststart": true,
-    "size": "auto",
-    "width": "auto",
-    "height": "auto",
-    "format": "auto",
-    "aspect": "auto",
-    "scaling": "auto",
-    "codec_options": ""
-  },
-  "audio": {
-    "codec": "aac",
-    "channel": "source",
-    "quality": "320k",
-    "sampleRate": "auto",
-    "volume": "100"
-  },
-  "filter": {
-    "deband": false,
-    "deshake": false,
-    "deflicker": false,
-    "dejudder": false,
-    "denoise": "none",
-    "deinterlace": "none",
-    "brightness": "0",
-    "contrast": "1",
-    "saturation": "1",
-    "gamma": "1",
-    "acontrast": "33"
-  }
+    "version": 2,
+    "format": {
+        "container": "mp4",
+        "faststart": true
+    },
+    "video": {
+        "encoder": "libx264",
+        "options": "_pixelFormat=yuv420p|crf=17|preset=medium|g=480|b=5000k",
+        "filters": "",
+        "sidedata": ""
+    },
+    "audio": {
+        "encoder": "aac",
+        "options": "_sampleFormat=fltp|b=320k|profile=aac_low",
+        "filters": "",
+        "sidedata": ""
+    }
 }
