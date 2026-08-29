@@ -165,6 +165,9 @@ echo Updated VSINSTALLDIR: %VSINSTALLDIR%
 set "VCPKG_VISUAL_STUDIO_PATH=%VSINSTALL%"
 set "VCPKG_PLATFORM_TOOLSET=v142"
 set "VCPKG_PLATFORM_TOOLSET_VERSION=14.29"
+REM Force vcpkg to download its own CMake/Ninja. Newer VS ships CMake 4.x which
+REM removed old policies (CMP0025/CMP0054 OLD) that pinned ports like x265 3.4 still use.
+set "VCPKG_FORCE_DOWNLOADED_BINARIES=1"
 vcpkg\vcpkg.exe install --triplet=x64-windows-release --overlay-triplets=triplets --vcpkg-root=vcpkg
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to install vcpkg dependencies
@@ -178,7 +181,15 @@ if exist "build\CMakeCache.txt" (
     del /Q build\CMakeCache.txt 2>nul
     rmdir /S /Q build\CMakeFiles 2>nul
 )
-cmake -B build -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake -T v142 -G "Visual Studio 17 2022"
+REM Pick the newest installed Visual Studio generator (2026 / 2022)
+set "CMAKE_GENERATOR="
+for /f "usebackq tokens=*" %%v in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property catalog_productLineVersion`) do (
+    if "%%v"=="2026" set "CMAKE_GENERATOR=Visual Studio 18 2026"
+    if "%%v"=="2022" set "CMAKE_GENERATOR=Visual Studio 17 2022"
+)
+if not defined CMAKE_GENERATOR set "CMAKE_GENERATOR=Visual Studio 17 2022"
+echo Using CMake generator: %CMAKE_GENERATOR%
+cmake -B build -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake -T v142 -G "%CMAKE_GENERATOR%"
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: CMake configuration failed
     exit /b 1
